@@ -68,10 +68,12 @@ def _run_one_shot(query: str) -> int:
 
 
 def _run_repl() -> int:
-    """Интерактивный REPL."""
+    """Интерактивный REPL с командами /help, /history, /clear."""
     from app.agent import run_agent
 
+    history: list[str] = []
     print("=== AI-агент по подпискам. Введите вопрос (или 'exit' для выхода). ===")
+    print("Команды: /help, /history, /clear, exit")
     while True:
         try:
             query = input("\n> ").strip()
@@ -82,6 +84,31 @@ def _run_repl() -> int:
             continue
         if query.lower() in {"exit", "quit", ":q", "q"}:
             break
+        if query == "/help":
+            print(
+                "Доступные команды:\n"
+                "  /help    — эта справка\n"
+                "  /history — история ваших вопросов\n"
+                "  /clear   — очистить историю\n"
+                "  exit     — выход\n\n"
+                "Примеры вопросов:\n"
+                "  - Сколько я потрачу в ближайшие 30 дней? Покажи итог в рублях.\n"
+                "  - Какая категория обходится мне дороже всего?\n"
+                "  - Есть ли у меня платежи на этой неделе?"
+            )
+            continue
+        if query == "/history":
+            if not history:
+                print("(история пуста)")
+            else:
+                for i, q in enumerate(history, 1):
+                    print(f"  {i}. {q}")
+            continue
+        if query == "/clear":
+            history.clear()
+            print("История очищена.")
+            continue
+        history.append(query)
         try:
             answer = run_agent(query)
         except Exception as exc:
