@@ -1,16 +1,4 @@
-"""Инструменты (tools) для ReAct-агента.
-
-Сверка с заданием:
-  - get_obligations(status, category)  -> список обязательств из JSON
-  - convert_currency(amount, from_currency, to_currency) -> число
-
-Доп. инструменты (поверх ТЗ):
-  - search_obligations(query, status) — поиск по названию
-  - filter_obligations — фильтр по сумме/валюте/нескольким категориям
-  - list_obligations_paginated — постраничный список
-  - export_obligations_csv — экспорт в CSV
-  - top_categories — топ-N категорий по расходам
-"""
+"""Инструменты (tools) для ReAct-агента."""
 
 from app.tools.analytics import (
     export_obligations_csv,
@@ -20,6 +8,14 @@ from app.tools.analytics import (
     top_categories,
 )
 from app.tools.currency import convert_currency
+from app.tools.exports import (
+    currency_summary,
+    export_markdown_report,
+    export_obligations_json,
+    find_duplicates,
+    forecast_monthly,
+    status_summary,
+)
 from app.tools.obligations import get_obligations
 
 __all__ = [
@@ -30,4 +26,10 @@ __all__ = [
     "list_obligations_paginated",
     "export_obligations_csv",
     "top_categories",
+    "export_obligations_json",
+    "export_markdown_report",
+    "forecast_monthly",
+    "find_duplicates",
+    "currency_summary",
+    "status_summary",
 ]
