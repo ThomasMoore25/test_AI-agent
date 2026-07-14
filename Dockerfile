@@ -7,6 +7,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Системные пакеты: ca-certificates нужен для HTTPS-запросов к GigaChat
+# и frankfurter.app.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Сначала ставим зависимости (кеш слоёв)
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

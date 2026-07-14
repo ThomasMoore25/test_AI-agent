@@ -18,8 +18,10 @@ from app import config
 def main() -> int:
     if not config.is_configured():
         print(
-            "ERROR: LLM_API_KEY is not set.\n"
-            "Copy .env.example -> .env and fill in your API key.",
+            "ERROR: GIGACHAT_API_KEY is not set.\n"
+            "1. Зарегистрируйтесь на https://developers.sber.ru/\n"
+            "2. Создайте проект и получите ключ API GigaChat.\n"
+            "3. Скопируйте .env.example -> .env и впишите ключ в GIGACHAT_API_KEY.",
             file=sys.stderr,
         )
         return 2

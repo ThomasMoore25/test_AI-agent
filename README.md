@@ -5,6 +5,7 @@
 ## Возможности
 
 - ReAct-агент на **LangChain + LangGraph** (`create_react_agent`)
+- LLM: **GigaChat** (Сбер) — нативная LLM экосистемы Сбера
 - Два инструмента:
   - `get_obligations(status, category)` — чтение и фильтрация JSON-фикстуры
   - `convert_currency(amount, from_currency, to_currency, force_refresh=False)` — конвертация через публичный API [frankfurter.app](https://frankfurter.dev)
@@ -25,7 +26,8 @@ source .venv/bin/activate
 pip install -r requirements-dev.txt
 
 cp .env.example .env
-# Откройте .env и впишите свой LLM_API_KEY
+# Откройте .env и впишите свой GIGACHAT_API_KEY
+#   (получить на https://developers.sber.ru/)
 
 python main.py
 ```
@@ -34,7 +36,7 @@ python main.py
 
 ```bash
 cp .env.example .env
-# Впишите LLM_API_KEY в .env
+# Впишите GIGACHAT_API_KEY в .env
 
 docker compose up --build
 ```
@@ -58,13 +60,15 @@ pytest -v
 
 | Переменная | Назначение | По умолчанию |
 |---|---|---|
-| `LLM_API_KEY` | **обязательный** — API-ключ LLM-провайдера | — |
-| `LLM_PROVIDER` | провайдер (`openai` на данный момент) | `openai` |
-| `LLM_MODEL` | имя модели | `gpt-4o-mini` |
-| `LLM_BASE_URL` | опц. для OpenAI-совместимых endpoint'ов | — |
+| `GIGACHAT_API_KEY` | **обязательный** — API-ключ GigaChat (https://developers.sber.ru/) | — |
+| `LLM_PROVIDER` | провайдер (`gigachat`) | `gigachat` |
+| `LLM_MODEL` | имя модели GigaChat | `GigaChat-Mini` |
+| `GIGACHAT_SCOPE` | scope авторизации (`GIGACHAT_API_PERS` / `B2B` / `CORP`) | `GIGACHAT_API_PERS` |
+| `GIGACHAT_BASE_URL` | endpoint API GigaChat | `https://gigachat.devices.sberbank.ru/api/v1` |
+| `GIGACHAT_VERIFY_SSL_CERTS` | проверка SSL-сертификатов Минцифры (False в dev) | `False` |
 | `LLM_TEMPERATURE` | температура | `0` |
 | `OBLIGATIONS_PATH` | путь к JSON-фикстуре | `app/fixtures/obligations.json` |
-| `FRANKFURTER_BASE_URL` | базовый URL API валют | `https://api.frankfurter.dev` |
+| `FRANKFURTER_BASE_URL` | базовый URL API валют | `https://api.frankfurter.app` |
 | `CURRENCY_CACHE_TTL_SECONDS` | TTL кеша курсов | `86400` |
 | `DEFAULT_TARGET_CURRENCY` | валюта агрегации по умолчанию | `RUB` |
 | `LOCAL_TIMEZONE` | часовой пояс для расчётов дат | `Europe/Minsk` |
@@ -73,15 +77,21 @@ pytest -v
 
 ## 2. Какой LLM выбран и почему
 
-**Выбран:** OpenAI **GPT-4o-mini**.
+**Выбран:** **GigaChat** (Сбер, модель `GigaChat-Mini`).
 
 **Почему:**
-1. **Стабильная поддержка tool calling** в LangChain (`langchain-openai`). ReAct-агент надёжно вызывает инструменты и парсит их результаты.
-2. **Низкая стоимость** при приемлемом качестве рассуждений — это важно, т.к. в реальной эксплуатации таких агентов основная нагрузка идёт на рутинные агрегации, а не на сложные логические задачи.
-3. **Полное соответствие требованию ТЗ** «LLM на твой выбор» — OpenAI API доступен через переменные окружения, без хардкода.
-4. **Прозрачность архитектуры**: при необходимости переключиться на GigaChat, локальную Ollama (через `LLM_BASE_URL`) или любой OpenAI-совместимый провайдер достаточно поменять переменные в `.env`, не трогая код агента.
+1. **Это стажировка в Сбере.** GigaChat — нативная LLM экосистемы Сбера. Выбор внутренней LLM демонстрирует понимание контекста работодателя и работу с его технологическим стеком.
+2. **Бесплатный доступ через https://developers.sber.ru/.** Не требуется платёжной карты, ключ выдаётся сразу после регистрации проекта.
+3. **Поддержка function calling / tools** через LangChain (`langchain-gigachat`). Это обязательное требование для ReAct-агента — GigaChat умеет вызывать инструменты и обрабатывать их результаты.
+4. **Хорошее качество на русском языке.** Все user stories и примеры в ТЗ на русском — GigaChat лучше работает с русскоязычными запросами, чем зарубежные LLM сопоставимого размера.
+5. **Полное соответствие требованию ТЗ** «LLM на твой выбор» и «API-ключ LLM передаётся через переменную окружения в .env».
 
-**Как заменить:** изменить `LLM_PROVIDER`, `LLM_MODEL` и при необходимости `LLM_BASE_URL` в `.env`.
+**Как заменить:** для переключения на другой LLM нужно:
+- Добавить соответствующий провайдер в `requirements.txt` (например `langchain-openai` для OpenAI).
+- Изменить `build_llm()` в `app/agent.py`.
+- Обновить переменные в `.env`.
+
+Архитектура инструментов (`get_obligations`, `convert_currency`) остаётся неизменной — они не зависят от LLM.
 
 ---
 
@@ -181,7 +191,7 @@ frankfurter.app на 2026-07-14):
 
 | Требование ТЗ | Реализация |
 |---|---|
-| Python, LLM на выбор | Python 3.11, OpenAI GPT-4o-mini |
+| Python, LLM на выбор | Python 3.11, GigaChat (Сбер) |
 | Срок 3 дня | v0.1 готов к ревью |
 | Формат: ссылка на репозиторий | GitHub-репозиторий |
 | ReAct-агент через готовый фреймворк | LangChain + LangGraph `create_react_agent` |

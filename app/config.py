@@ -15,11 +15,20 @@ from dotenv import load_dotenv
 # .env загружается один раз при импорте модуля
 load_dotenv()
 
-# --- LLM ---
-LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
-LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
-LLM_API_KEY: str | None = os.getenv("LLM_API_KEY")
-LLM_BASE_URL: str | None = os.getenv("LLM_BASE_URL")  # опц. для прокси/локальных LLM
+# --- LLM (GigaChat от Сбера) ---
+# Сверка с заданием: "LLM на твой выбор" + стажировка в Сбере → GigaChat.
+LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gigachat")
+LLM_MODEL: str = os.getenv("LLM_MODEL", "GigaChat-Mini")
+GIGACHAT_API_KEY: str | None = os.getenv("GIGACHAT_API_KEY")
+GIGACHAT_SCOPE: str = os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
+GIGACHAT_BASE_URL: str = os.getenv(
+    "GIGACHAT_BASE_URL", "https://gigachat.devices.sberbank.ru/api/v1"
+)
+# GigaChat использует SSL-сертификаты Минцифры РФ; в dev-режиме можно отключить
+# проверку, в прод — нужно поставить сертификат в систему.
+GIGACHAT_VERIFY_SSL_CERTS: bool = os.getenv(
+    "GIGACHAT_VERIFY_SSL_CERTS", "False"
+).lower() in ("1", "true", "yes")
 LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0"))
 
 # --- Источник данных об обязательствах ---
@@ -51,4 +60,4 @@ LOCAL_TIMEZONE: str = os.getenv("LOCAL_TIMEZONE", "Europe/Minsk")
 
 def is_configured() -> bool:
     """Проверка, что минимально необходимые переменные заданы."""
-    return bool(LLM_API_KEY)
+    return bool(GIGACHAT_API_KEY)

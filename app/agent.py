@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
-from langchain_openai import ChatOpenAI
+from langchain_gigachat.chat_models import GigaChat
 from langgraph.prebuilt import create_react_agent
 
 from app import config
@@ -53,16 +53,27 @@ SYSTEM_PROMPT = """Ты — финансовый ассистент по лич�
 
 
 def build_llm() -> BaseChatModel:
-    """Создаёт LLM-инстанс по настройкам из .env."""
-    if not config.LLM_API_KEY:
+    """Создаёт GigaChat-инстанс по настройкам из .env.
+
+    Сверка с заданием: "LLM на твой выбор" + стажировка в Сбере → GigaChat.
+    Для доступа нужен ключ GIGACHAT_API_KEY, который получается на
+    https://developers.sber.ru/.
+    """
+    if not config.GIGACHAT_API_KEY:
         raise RuntimeError(
-            "LLM_API_KEY is not set. Copy .env.example -> .env and fill it."
+            "GIGACHAT_API_KEY is not set. "
+            "Copy .env.example -> .env and fill it with your GigaChat key "
+            "(https://developers.sber.ru/)."
         )
-    return ChatOpenAI(
+    return GigaChat(
         model=config.LLM_MODEL,
-        api_key=config.LLM_API_KEY,
+        api_key=config.GIGACHAT_API_KEY,
+        scope=config.GIGACHAT_SCOPE,
+        base_url=config.GIGACHAT_BASE_URL,
+        verify_ssl_certs=config.GIGACHAT_VERIFY_SSL_CERTS,
         temperature=config.LLM_TEMPERATURE,
-        base_url=config.LLM_BASE_URL,
+        # Включаем поддержку function calling / tools (обязательно для ReAct)
+        streaming=False,
     )
 
 
