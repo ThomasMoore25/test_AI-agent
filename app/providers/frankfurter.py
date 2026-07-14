@@ -5,10 +5,11 @@ from __future__ import annotations
 import httpx
 
 from app import config
+from app.http_client import with_retry
 
 
 def fetch_rate(from_currency: str, to_currency: str) -> float:
-    """Живой запрос к frankfurter.app.
+    """Живой запрос к frankfurter.app с retry.
 
     URL из ТЗ: https://api.frankfurter.app/latest?from=USD&to=RUB
     (httpx автоматически следует за 301-редиректом на api.frankfurter.dev/v1/...).
@@ -22,17 +23,21 @@ def fetch_rate(from_currency: str, to_currency: str) -> float:
         "from": from_currency.upper(),
         "to": to_currency.upper(),
     }
-    with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-        resp = client.get(url, params=params)
-        resp.raise_for_status()
-        payload = resp.json()
-    rates = payload.get("rates") or {}
-    rate = rates.get(to_currency.upper())
-    if rate is None:
-        raise ValueError(
-            f"frankfurter.app did not return rate for "
-            f"{from_currency}->{to_currency}. "
-            f"Likely currency is not supported (e.g. RUB was removed from "
-            f"ECB reference rates in 2022). Response: {payload}"
-        )
-    return float(rate)
+
+    def _do() -> float:
+        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+            resp = client.get(url, params=params)
+            resp.raise_for_status()
+            payload = resp.json()
+        rates = payload.get("rates") or {}
+        rate = rates.get(to_currency.upper())
+        if rate is None:
+            raise ValueError(
+                f"frankfurter.app did not return rate for "
+                f"{from_currency}->{to_currency}. "
+                f"Likely currency is not supported (e.g. RUB was removed from "
+                f"ECB reference rates in 2022). Response: {payload}"
+            )
+        return float(rate)
+
+    return with_retry(_do)

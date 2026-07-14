@@ -19,6 +19,8 @@ from app import config
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    from app import __version__
+
     parser = argparse.ArgumentParser(
         prog="subscription-agent",
         description="AI-агент для анализа личных подписок и регулярных платежей.",
@@ -30,9 +32,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Вопрос агенту в one-shot режиме. Без аргумента — интерактивный REPL.",
     )
     parser.add_argument(
+        "--version",
+        action="version",
+        version=f"subscription-agent {__version__}",
+    )
+    parser.add_argument(
         "--no-color",
         action="store_true",
         help="Отключить цветной вывод (для логов).",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Подробный вывод (debug-логи).",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Тихий режим (только ошибки и ответ агента).",
     )
     return parser
 
