@@ -7,7 +7,12 @@ services:
     stdin_open: true   # REPL требует интерактивного stdin
     tty: true
     restart: "no"
-    # Можно переопределить команду для one-shot режима:
+    # One-shot режим:
     #   docker compose run --rm agent "Сколько я потрачу в ближайшие 30 дней?"
-    # По умолчанию запускается интерактивный REPL.
-    command: []
+    # Интерактивный REPL:
+    #   docker compose up
+    # Лог трейса в volume:
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - TRACE_LOG_PATH=/app/logs/trace.jsonl
