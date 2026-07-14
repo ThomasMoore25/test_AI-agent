@@ -57,6 +57,11 @@ DEFAULT_TARGET_CURRENCY: str = os.getenv("DEFAULT_TARGET_CURRENCY", "RUB")
 # --- Временная зона для расчёта "сегодня / на этой неделе / в ближайшие 30 дней" ---
 LOCAL_TIMEZONE: str = os.getenv("LOCAL_TIMEZONE", "Europe/Minsk")
 
+# --- Логирование ReAct-трейса в JSONL-файл (доп. к консоли) ---
+# Пустая строка или None — не писать файл.
+TRACE_LOG_PATH: str | None = os.getenv("TRACE_LOG_PATH") or None
+USE_COLOR: bool = os.getenv("USE_COLOR", "True").lower() in ("1", "true", "yes")
+
 
 def is_configured() -> bool:
     """Проверка, что минимально необходимые переменные заданы."""

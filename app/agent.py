@@ -95,13 +95,21 @@ def run_agent(query: str) -> str:
     Возвращает финальный ответ в виде строки.
     """
     agent = build_agent()
-    callback = ReActConsoleCallback()
+    from pathlib import Path
+    log_file = Path(config.TRACE_LOG_PATH) if config.TRACE_LOG_PATH else None
+    callback = ReActConsoleCallback(
+        log_file=log_file,
+        use_color=config.USE_COLOR,
+    )
     today = __import__("datetime").date.today().isoformat()
     full_prompt = f"Текущая дата: {today}.\n\nВопрос пользователя: {query}"
-    result = agent.invoke(
-        {"messages": [("user", full_prompt)]},
-        config={"callbacks": [callback]},
-    )
+    try:
+        result = agent.invoke(
+            {"messages": [("user", full_prompt)]},
+            config={"callbacks": [callback]},
+        )
+    finally:
+        callback.flush_to_file()
     messages = result.get("messages", [])
     if not messages:
         return "(пустой ответ агента)"

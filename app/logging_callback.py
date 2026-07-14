@@ -1,27 +1,72 @@
-"""Callback для логирования ReAct-цикла в консоль.
+"""Callback для логирования ReAct-цикла в консоль и в файл.
 
 Сверка с заданием:
   - Каждый шаг (Thought / Action / Observation) должен быть виден в консоли.
+Дополнительно (поверх ТЗ):
+  - Полный трейс пишется в JSONL-файл для последующего аудита/отладки.
 """
 
 from __future__ import annotations
 
+import json
 import sys
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.agents import AgentAction, AgentFinish
-from langchain_core.messages import BaseMessage
 from langchain_core.outputs import LLMResult
 
 
 class ReActConsoleCallback(BaseCallbackHandler):
-    """Печатает ход рассуждений агента в читаемом виде."""
+    """Печатает ход рассуждений агента в читаемом виде + пишет в JSONL."""
 
-    def _emit(self, label: str, text: str) -> None:
+    def __init__(
+        self,
+        log_file: Optional[Path] = None,
+        use_color: bool = True,
+    ) -> None:
+        self.log_file = log_file
+        self.use_color = use_color and sys.stdout.isatty()
+        self._trace: List[Dict[str, Any]] = []
+        self._run_start: float = time.time()
+
+    # --- Цветовые коды (минимальный набор) ---
+    _COLORS = {
+        "thought": "\033[36m",   # cyan
+        "action": "\033[33m",    # yellow
+        "observation": "\033[32m",  # green
+        "error": "\033[31m",     # red
+        "reset": "\033[0m",
+    }
+
+    def _color(self, kind: str, text: str) -> str:
+        if not self.use_color:
+            return text
+        return f"{self._COLORS.get(kind, '')}{text}{self._COLORS['reset']}"
+
+    def _emit(self, label: str, text: str, color: str = "") -> None:
         bar = "=" * 60
-        print(f"\n{bar}\n[{label}]\n{text}\n{bar}", file=sys.stdout, flush=True)
+        header = self._color(color, f"[{label}]")
+        print(f"\n{bar}\n{header}\n{text}\n{bar}", file=sys.stdout, flush=True)
+        # Сохраняем в трейс
+        self._trace.append({
+            "ts": time.time() - self._run_start,
+            "type": label.lower(),
+            "content": text,
+        })
+
+    def flush_to_file(self) -> None:
+        """Дописать накопленный трейс в JSONL-файл."""
+        if not self.log_file:
+            return
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.log_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "started_at": self._run_start,
+                "events": self._trace,
+            }, ensure_ascii=False) + "\n")
 
     # --- LLM-level (видим Thought) ---
     def on_llm_start(
@@ -33,9 +78,8 @@ class ReActConsoleCallback(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
-        # Не печатаем сам промпт полностью (он длинный), только метку
         name = (serialized or {}).get("name", "LLM")
-        self._emit("Thought / LLM call", f"model={name}")
+        self._emit("Thought / LLM call", f"model={name}", "thought")
 
     def on_llm_end(
         self,
@@ -50,7 +94,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         except Exception:
             text = "(no text)"
         if text:
-            self._emit("Thought", text)
+            self._emit("Thought", text, "thought")
 
     # --- Tool-level (видим Action / Observation) ---
     def on_tool_start(
@@ -64,7 +108,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         name = (serialized or {}).get("name", "tool")
-        self._emit("Action", f"tool={name}\ninput={input_str}")
+        self._emit("Action", f"tool={name}\ninput={input_str}", "action")
 
     def on_tool_end(
         self,
@@ -74,7 +118,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
-        self._emit("Observation", str(output))
+        self._emit("Observation", str(output), "observation")
 
     def on_tool_error(
         self,
@@ -84,4 +128,8 @@ class ReActConsoleCallback(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
-        self._emit("Tool error", f"{error.__class__.__name__}: {error}")
+        self._emit(
+            "Tool error",
+            f"{error.__class__.__name__}: {error}",
+            "error",
+        )
