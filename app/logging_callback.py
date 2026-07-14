@@ -86,6 +86,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
+        """LangChain callback: on_llm_start."""
         name = (serialized or {}).get("name", "LLM")
         self._emit("Thought / LLM call", f"model={name}", "thought")
 
@@ -97,6 +98,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
+        """LangChain callback: on_llm_end."""
         try:
             text = response.generations[0][0].text
         except Exception:
@@ -115,6 +117,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         tool_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
+        """LangChain callback: on_tool_start."""
         name = (serialized or {}).get("name", "tool")
         self._emit("Action", f"tool={name}\ninput={input_str}", "action")
 
@@ -126,6 +129,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
+        """LangChain callback: on_tool_end."""
         self._emit("Observation", str(output), "observation")
 
     def on_tool_error(
@@ -136,6 +140,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
+        """LangChain callback: on_tool_error."""
         self._emit(
             "Tool error",
             f"{error.__class__.__name__}: {error}",
