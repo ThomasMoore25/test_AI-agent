@@ -23,6 +23,7 @@ class RateLimiter:
 
     def acquire(self) -> bool:
         """Попробовать взять слот. True если можно, False если превышен лимит."""
+        """Попробовать взять слот. True если можно, False если превышен лимит."""
         now = time.time()
         with self._lock:
             while self._calls and now - self._calls[0] > self.window:
@@ -53,6 +54,7 @@ class CircuitBreaker:
 
     @property
     def state(self) -> str:
+        """Текущее состояние breaker: closed / open / half_open."""
         return self._state
 
     def call(self, fn: Callable[[], T]) -> T:
@@ -92,13 +94,16 @@ class GracefulShutdown:
         self._lock = threading.Lock()
 
     def register(self, handler: Callable[[], None]) -> None:
+        """Зарегистрировать cleanup-обработчик."""
         with self._lock:
             self._handlers.append(handler)
 
     def is_shutting_down(self) -> bool:
+        """True если получен сигнал shutdown."""
         return self._shutdown
 
     def install(self) -> None:
+        """Установить signal handlers для SIGTERM/SIGINT."""
         """Установить signal handlers."""
         signal.signal(signal.SIGTERM, self._handle)
         signal.signal(signal.SIGINT, self._handle)

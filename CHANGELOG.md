@@ -6,6 +6,42 @@
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-07-15
+
+### Added (поверх v1.0)
+- **13 аналитических инструментов**: search_obligations, filter_obligations,
+  list_obligations_paginated, export_obligations_csv, top_categories,
+  export_obligations_json, export_markdown_report, forecast_monthly,
+  find_duplicates, currency_summary, status_summary, pie/bar/timeline charts,
+  compare_periods, inflation_adjusted, historical_rate, list_supported_currencies,
+  currency_info, list_categories, list_statuses, suggest_obligations
+- **Опциональный FastAPI** с эндпоинтами /health, /ask, /obligations, /convert,
+  /docs (Swagger), /redoc, минимальный HTML-UI
+- **Async-инструменты**: aconvert_currency, abatch_convert (asyncio.gather)
+- **Multi-LLM provider factory**: gigachat / openai / ollama / yandex
+- **Резилицентность**: RateLimiter (token bucket), CircuitBreaker, GracefulShutdown
+- **Fixture manager**: валидация схемы, backup, hot-reload
+- **Структурированное логирование**: setup_logging с LOG_LEVEL из env
+- **YAML-конфиг** (опционально, поверх .env)
+- **Performance benchmarks**: 10 инструментов, каждый < 1ms
+- **E2E + contract + fuzz тесты** (27 шт.)
+- **Документация**: ARCHITECTURE.md, CONTRIBUTING.md, SECURITY.md,
+  CODE_OF_CONDUCT.md, README.en.md, .github/ISSUE_TEMPLATE/,
+  PULL_REQUEST_TEMPLATE.md, dependabot.yml, .pre-commit-config.yaml
+- **CLI**: --version, --verbose, --quiet, REPL /help, /history, /clear
+- **Code quality**: ruff с D-rules (pydocstyle), mypy strict для app/*,
+  pytest markers, coverage threshold 70%
+- **Multi-stage Docker build** с healthcheck
+- **docker-compose profiles**: default, test, lint
+
+### Changed
+- Все HTTP-запросы используют with_retry (экспоненциальный backoff для 5xx/429)
+- Все callback-методы задокументированы
+- Все public-функции имеют docstrings
+
+### Tests
+- 87 unit/edge/integration/contract/fuzz тестов (с 30 в v1.0)
+
 ## [1.0.0] — 2026-07-15
 
 ### Added
