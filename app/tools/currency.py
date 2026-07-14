@@ -19,19 +19,18 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.tools import tool
 
 from app import config
-from app.providers import frankfurter_rate, cbr_rate
-
+from app.providers import cbr_rate, frankfurter_rate
 
 # Кеш: ключ (from_currency, to_currency, source) -> (rate, fetched_at_epoch)
 _cache: dict[tuple[str, str, str], tuple[float, float]] = {}
 
 
-def _cache_get(src: str, dst: str, source: str) -> Optional[float]:
+def _cache_get(src: str, dst: str, source: str) -> float | None:
     key = (src.upper(), dst.upper(), source)
     entry = _cache.get(key)
     if entry is None:
@@ -47,7 +46,7 @@ def _cache_put(src: str, dst: str, source: str, rate: float) -> None:
     _cache[key] = (rate, time.time())
 
 
-def _try_providers(src: str, dst: str) -> tuple[Optional[float], Optional[str], Optional[str]]:
+def _try_providers(src: str, dst: str) -> tuple[float | None, str | None, str | None]:
     """Пробует провайдеров по очереди. Возвращает (rate, source, error)."""
     # 1. Тот же источник = frankfurter (ТЗ)
     try:

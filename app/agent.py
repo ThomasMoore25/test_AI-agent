@@ -15,9 +15,8 @@ from langchain_gigachat.chat_models import GigaChat
 from langgraph.prebuilt import create_react_agent
 
 from app import config
-from app.tools import get_obligations, convert_currency
 from app.logging_callback import ReActConsoleCallback
-
+from app.tools import convert_currency, get_obligations
 
 SYSTEM_PROMPT = """Ты — финансовый ассистент по личным подпискам и регулярным платежам.
 
@@ -96,6 +95,7 @@ def run_agent(query: str) -> str:
     """
     agent = build_agent()
     from pathlib import Path
+
     log_file = Path(config.TRACE_LOG_PATH) if config.TRACE_LOG_PATH else None
     callback = ReActConsoleCallback(
         log_file=log_file,

@@ -12,7 +12,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -24,20 +24,20 @@ class ReActConsoleCallback(BaseCallbackHandler):
 
     def __init__(
         self,
-        log_file: Optional[Path] = None,
+        log_file: Path | None = None,
         use_color: bool = True,
     ) -> None:
         self.log_file = log_file
         self.use_color = use_color and sys.stdout.isatty()
-        self._trace: List[Dict[str, Any]] = []
+        self._trace: list[dict[str, Any]] = []
         self._run_start: float = time.time()
 
     # --- Цветовые коды (минимальный набор) ---
     _COLORS = {
-        "thought": "\033[36m",   # cyan
-        "action": "\033[33m",    # yellow
+        "thought": "\033[36m",  # cyan
+        "action": "\033[33m",  # yellow
         "observation": "\033[32m",  # green
-        "error": "\033[31m",     # red
+        "error": "\033[31m",  # red
         "reset": "\033[0m",
     }
 
@@ -51,11 +51,13 @@ class ReActConsoleCallback(BaseCallbackHandler):
         header = self._color(color, f"[{label}]")
         print(f"\n{bar}\n{header}\n{text}\n{bar}", file=sys.stdout, flush=True)
         # Сохраняем в трейс
-        self._trace.append({
-            "ts": time.time() - self._run_start,
-            "type": label.lower(),
-            "content": text,
-        })
+        self._trace.append(
+            {
+                "ts": time.time() - self._run_start,
+                "type": label.lower(),
+                "content": text,
+            }
+        )
 
     def flush_to_file(self) -> None:
         """Дописать накопленный трейс в JSONL-файл."""
@@ -63,19 +65,25 @@ class ReActConsoleCallback(BaseCallbackHandler):
             return
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
         with self.log_file.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "started_at": self._run_start,
-                "events": self._trace,
-            }, ensure_ascii=False) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "started_at": self._run_start,
+                        "events": self._trace,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
 
     # --- LLM-level (видим Thought) ---
     def on_llm_start(
         self,
-        serialized: Dict[str, Any],
-        prompts: List[str],
+        serialized: dict[str, Any],
+        prompts: list[str],
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
+        parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         name = (serialized or {}).get("name", "LLM")
@@ -86,7 +94,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         response: LLMResult,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
+        parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         try:
@@ -99,12 +107,12 @@ class ReActConsoleCallback(BaseCallbackHandler):
     # --- Tool-level (видим Action / Observation) ---
     def on_tool_start(
         self,
-        serialized: Dict[str, Any],
+        serialized: dict[str, Any],
         input_str: str,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
-        tool_run_id: Optional[UUID] = None,
+        parent_run_id: UUID | None = None,
+        tool_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         name = (serialized or {}).get("name", "tool")
@@ -115,7 +123,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         output: str,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
+        parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         self._emit("Observation", str(output), "observation")
@@ -125,7 +133,7 @@ class ReActConsoleCallback(BaseCallbackHandler):
         error: BaseException,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
+        parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         self._emit(

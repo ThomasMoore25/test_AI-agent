@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from app.providers.frankfurter import fetch_rate as frankfurter_rate
 from app.providers.cbr import fetch_rate as cbr_rate
+from app.providers.frankfurter import fetch_rate as frankfurter_rate
 
 __all__ = ["frankfurter_rate", "cbr_rate"]

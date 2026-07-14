@@ -6,13 +6,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-import pytest
-
-from app.tools.obligations import get_obligations, _load_obligations
 from app import config
+from app.tools.obligations import _load_obligations, get_obligations
 
 
 def test_get_obligations_returns_all_when_no_filters() -> None:
@@ -52,9 +49,7 @@ def test_get_obligations_filters_by_category_case_insensitive() -> None:
 
 def test_get_obligations_unknown_filter_returns_empty() -> None:
     """Несуществующий фильтр -> пустой список (антигаллюцинация)."""
-    result = get_obligations.invoke(
-        {"status": "nonexistent_status", "category": None}
-    )
+    result = get_obligations.invoke({"status": "nonexistent_status", "category": None})
     assert result == []
 
 

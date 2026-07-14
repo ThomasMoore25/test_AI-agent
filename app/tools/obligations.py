@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
@@ -63,8 +63,8 @@ def _cached_obligations(path: str) -> ObligationList:
 
 def _filter(
     items: list[Obligation],
-    status: Optional[str] = None,
-    category: Optional[str] = None,
+    status: str | None = None,
+    category: str | None = None,
 ) -> list[Obligation]:
     result = items
     if status is not None and status != "":
@@ -76,8 +76,8 @@ def _filter(
 
 @tool
 def get_obligations(
-    status: Optional[str] = None,
-    category: Optional[str] = None,
+    status: str | None = None,
+    category: str | None = None,
 ) -> list[dict[str, Any]]:
     """Возвращает список финансовых обязательств пользователя.
 

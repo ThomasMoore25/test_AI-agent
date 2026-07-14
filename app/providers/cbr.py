@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import httpx
 
-
 CBR_BASE_URL = "https://www.cbr-xml-daily.ru/daily_json.js"
 CBR_TIMEOUT = 10.0
 
@@ -45,8 +44,7 @@ def fetch_rate(from_currency: str, to_currency: str) -> float:
         v = valutes.get(code)
         if v is None:
             raise ValueError(
-                f"CBR does not have rate for {code}. "
-                f"Available: {sorted(valutes.keys())[:20]}..."
+                f"CBR does not have rate for {code}. Available: {sorted(valutes.keys())[:20]}..."
             )
         # Nominal: например для JPY Nominal=100, Value=67.5 —
         # значит 100 JPY = 67.5 RUB, т.е. 1 JPY = 0.675 RUB

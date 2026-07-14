@@ -9,16 +9,16 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import httpx
-import pytest
 
-from app.tools.currency import convert_currency, _cache_put, _cache
-from app.tools import currency as currency_module
+from app.tools.currency import _cache, _cache_put, convert_currency
 
 
 def test_convert_currency_same_currency_no_api_call() -> None:
     """Конвертация USD->USD не дёргает API."""
-    with patch("app.tools.currency.frankfurter_rate") as mock_f, \
-         patch("app.tools.currency.cbr_rate") as mock_c:
+    with (
+        patch("app.tools.currency.frankfurter_rate") as mock_f,
+        patch("app.tools.currency.cbr_rate") as mock_c,
+    ):
         result = convert_currency.invoke(
             {
                 "amount": 100.0,
@@ -39,8 +39,10 @@ def test_convert_currency_uses_cache_and_skips_api() -> None:
     _cache.clear()
     _cache_put("USD", "RUB", "cbr", 90.0)
 
-    with patch("app.tools.currency.frankfurter_rate") as mock_f, \
-         patch("app.tools.currency.cbr_rate") as mock_c:
+    with (
+        patch("app.tools.currency.frankfurter_rate") as mock_f,
+        patch("app.tools.currency.cbr_rate") as mock_c,
+    ):
         result = convert_currency.invoke(
             {
                 "amount": 10.0,
@@ -61,9 +63,7 @@ def test_convert_currency_force_refresh_ignores_cache() -> None:
     _cache.clear()
     _cache_put("USD", "EUR", "frankfurter", 0.5)  # устаревший кеш
 
-    with patch(
-        "app.tools.currency.frankfurter_rate", return_value=0.9
-    ) as mock_f:
+    with patch("app.tools.currency.frankfurter_rate", return_value=0.9) as mock_f:
         result = convert_currency.invoke(
             {
                 "amount": 10.0,
@@ -87,8 +87,10 @@ def test_convert_currency_fallback_to_cbr_for_rub() -> None:
         request=httpx.Request("GET", "https://api.frankfurter.app/latest?from=USD&to=RUB"),
         response=httpx.Response(404, json={"message": "not found"}),
     )
-    with patch("app.tools.currency.frankfurter_rate", side_effect=err), \
-         patch("app.tools.currency.cbr_rate", return_value=90.0) as mock_c:
+    with (
+        patch("app.tools.currency.frankfurter_rate", side_effect=err),
+        patch("app.tools.currency.cbr_rate", return_value=90.0) as mock_c,
+    ):
         result = convert_currency.invoke(
             {
                 "amount": 10.0,
@@ -106,8 +108,10 @@ def test_convert_currency_all_providers_fail_returns_structured_failure() -> Non
     """При ошибке обоих провайдеров возвращается ok=false (антигаллюцинация)."""
     _cache.clear()
     err = httpx.ConnectError("boom")
-    with patch("app.tools.currency.frankfurter_rate", side_effect=err), \
-         patch("app.tools.currency.cbr_rate", side_effect=err):
+    with (
+        patch("app.tools.currency.frankfurter_rate", side_effect=err),
+        patch("app.tools.currency.cbr_rate", side_effect=err),
+    ):
         result = convert_currency.invoke(
             {
                 "amount": 10.0,
@@ -146,8 +150,10 @@ def test_convert_currency_unsupported_currency_returns_clear_error() -> None:
         response=httpx.Response(404, json={"message": "not found"}),
     )
     cbr_err = ValueError("CBR does not have rate for XYZ")
-    with patch("app.tools.currency.frankfurter_rate", side_effect=frankfurter_err), \
-         patch("app.tools.currency.cbr_rate", side_effect=cbr_err):
+    with (
+        patch("app.tools.currency.frankfurter_rate", side_effect=frankfurter_err),
+        patch("app.tools.currency.cbr_rate", side_effect=cbr_err),
+    ):
         result = convert_currency.invoke(
             {
                 "amount": 100.0,
@@ -167,8 +173,10 @@ def test_convert_currency_rub_to_usd_via_cbr() -> None:
         request=httpx.Request("GET", "https://api.frankfurter.app/latest?from=RUB&to=USD"),
         response=httpx.Response(404, json={"message": "not found"}),
     )
-    with patch("app.tools.currency.frankfurter_rate", side_effect=err), \
-         patch("app.tools.currency.cbr_rate", return_value=0.0125) as mock_c:
+    with (
+        patch("app.tools.currency.frankfurter_rate", side_effect=err),
+        patch("app.tools.currency.cbr_rate", return_value=0.0125) as mock_c,
+    ):
         result = convert_currency.invoke(
             {
                 "amount": 1000.0,

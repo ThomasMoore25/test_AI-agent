@@ -6,21 +6,18 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-from unittest.mock import patch, MagicMock
-
-import pytest
+from datetime import date
 
 from app.date_utils import (
     filter_by_date_range,
+    group_by_category,
     next_n_days,
     this_week,
-    group_by_category,
 )
 from app.tools.obligations import get_obligations
 
-
 # ============ date_utils ============
+
 
 def test_filter_by_date_range_inclusive() -> None:
     """Границы диапазона включаются."""
@@ -95,6 +92,7 @@ def test_next_n_days_returns_correct_range() -> None:
 
 # ============ Интеграционный тест с mock-LLM ============
 
+
 def test_agent_pipeline_with_mocked_llm() -> None:
     """Полный пайплайн агента с замоканным LLM.
 
@@ -127,10 +125,10 @@ def test_agent_pipeline_with_mocked_llm() -> None:
 
 def test_agent_build_modules_importable() -> None:
     """Все модули агента импортируются без LLM_API_KEY (smoke test)."""
-    from app.agent import build_agent, build_llm, SYSTEM_PROMPT
-    from app.tools import get_obligations, convert_currency
+    from app.agent import SYSTEM_PROMPT, build_agent, build_llm
     from app.date_utils import filter_by_date_range, group_by_category
     from app.logging_callback import ReActConsoleCallback
+    from app.tools import convert_currency, get_obligations
 
     assert "финансовый ассистент" in SYSTEM_PROMPT.lower()
     assert callable(build_agent)

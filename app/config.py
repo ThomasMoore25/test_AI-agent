@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # .env загружается один раз при импорте модуля
@@ -26,9 +27,11 @@ GIGACHAT_BASE_URL: str = os.getenv(
 )
 # GigaChat использует SSL-сертификаты Минцифры РФ; в dev-режиме можно отключить
 # проверку, в прод — нужно поставить сертификат в систему.
-GIGACHAT_VERIFY_SSL_CERTS: bool = os.getenv(
-    "GIGACHAT_VERIFY_SSL_CERTS", "False"
-).lower() in ("1", "true", "yes")
+GIGACHAT_VERIFY_SSL_CERTS: bool = os.getenv("GIGACHAT_VERIFY_SSL_CERTS", "False").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0"))
 
 # --- Источник данных об обязательствах ---
@@ -43,9 +46,7 @@ OBLIGATIONS_PATH: Path = Path(
 # В ТЗ указан URL: GET https://api.frankfurter.app/latest?from=USD&to=RUB
 # api.frankfurter.app (Cloudflare) редиректит 301 -> api.frankfurter.dev/v1/...
 # httpx по умолчанию следует за редиректами, поэтому используем базовый URL из ТЗ.
-FRANKFURTER_BASE_URL: str = os.getenv(
-    "FRANKFURTER_BASE_URL", "https://api.frankfurter.app"
-)
+FRANKFURTER_BASE_URL: str = os.getenv("FRANKFURTER_BASE_URL", "https://api.frankfurter.app")
 # ECB публикует курсы 1 раз в рабочий день около 16:00 CET.
 # Кеш на 24 часа физически не приводит к потере актуальных данных для этого API.
 # TTL вынесен в env — при желании можно поставить меньше.

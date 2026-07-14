@@ -1,0 +1,37 @@
+# Конфигурация ruff (lint + format)
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+]
+ignore = [
+    "E501",  # line-too-long (format handles)
+    "B008",  # function call in default argument (нужно для LangChain @tool)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+# Конфигурация mypy (строгие типы, но без блокировки)
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+ignore_missing_imports = true  # langchain/gigachat не имеют полных stubs
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"

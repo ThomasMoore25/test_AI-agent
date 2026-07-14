@@ -7,8 +7,8 @@ User Story #3 — 'Есть ли у меня платежи на этой нед
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from datetime import date, datetime, timedelta
-from typing import Iterable, Sequence
 
 
 def filter_by_date_range(
