@@ -92,6 +92,11 @@ def _run_repl() -> int:
 
 
 def main() -> int:
+    """Точка входа CLI.
+
+    Returns:
+        Код выхода: 0 — успех, 1 — ошибка агента, 2 — ошибка конфигурации.
+    """
     parser = _build_parser()
     args = parser.parse_args()
 
