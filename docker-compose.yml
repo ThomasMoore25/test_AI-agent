@@ -4,15 +4,32 @@ services:
     container_name: subscription_agent
     env_file:
       - .env
-    stdin_open: true   # REPL требует интерактивного stdin
+    stdin_open: true
     tty: true
     restart: "no"
-    # One-shot режим:
-    #   docker compose run --rm agent "Сколько я потрачу в ближайшие 30 дней?"
-    # Интерактивный REPL:
-    #   docker compose up
-    # Лог трейса в volume:
     volumes:
       - ./logs:/app/logs
     environment:
       - TRACE_LOG_PATH=/app/logs/trace.jsonl
+    profiles:
+      - default
+
+  # Опциональный сервис для запуска тестов в контейнере
+  test:
+    build: .
+    container_name: subscription_agent_test
+    env_file:
+      - .env
+    entrypoint: ["python", "-m", "pytest", "-v"]
+    restart: "no"
+    profiles:
+      - test
+
+  # Опциональный сервис для линтинга
+  lint:
+    build: .
+    container_name: subscription_agent_lint
+    entrypoint: ["python", "-m", "ruff", "check", "app/", "tests/", "main.py"]
+    restart: "no"
+    profiles:
+      - lint
