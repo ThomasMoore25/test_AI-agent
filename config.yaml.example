@@ -1,0 +1,14 @@
+# Опциональная YAML-конфигурация (поверх .env).
+# .env перекрывает значения из этого файла.
+#
+# llm:
+#   model: GigaChat-Mini
+#   temperature: 0
+# cache:
+#   ttl_seconds: 86400
+# http:
+#   timeout_seconds: 10
+#   max_retries: 3
+# business:
+#   default_target_currency: RUB
+#   local_timezone: Europe/Minsk
