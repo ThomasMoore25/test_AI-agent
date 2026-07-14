@@ -1,18 +1,19 @@
 """Инструмент convert_currency.
 
 Сверка с заданием:
-  - Конвертирует сумму через публичный API frankfurter.app
-  - GET https://api.frankfurter.dev/v1/latest?base=USD&symbols=RUB
+  - Конвертирует сумму через публичный API frankfurter.app (основной источник).
+  - Доп. источник: ЦБ РФ для конвертаций с участием RUB
+    (frankfurter.app не поддерживает RUB с 2022 года).
   - Принимает amount, from_currency, to_currency и возвращает число.
 
 Дополнительно (поверх ТЗ):
   - Кеш курсов на TTL из .env (по умолчанию 24 часа). Обоснование:
     frankfurter.app использует курсы ECB, которые обновляются 1 раз в
-    рабочий день — 24-часовой кеш не приводит к потере актуальности.
+    рабочий день; ЦБ РФ также обновляет курсы 1 раз в рабочий день.
   - Параметр force_refresh: при True кеш игнорируется и делается живой
-    запрос к API (на случай, если агент подозревает устаревание).
-  - При ошибке API возвращается структурированное сообщение об ошибке
-    (антигаллюцинация: агент не должен выдумывать курс).
+    запрос к API.
+  - При ошибке обоих источников возвращается структурированное сообщение
+    об ошибке (антигаллюцинация: агент не должен выдумывать курс).
 """
 
 from __future__ import annotations
@@ -20,18 +21,18 @@ from __future__ import annotations
 import time
 from typing import Any, Optional
 
-import httpx
 from langchain_core.tools import tool
 
 from app import config
+from app.providers import frankfurter_rate, cbr_rate
 
 
-# Кеш: ключ (from_currency, to_currency) -> (rate, fetched_at_epoch)
-_cache: dict[tuple[str, str], tuple[float, float]] = {}
+# Кеш: ключ (from_currency, to_currency, source) -> (rate, fetched_at_epoch)
+_cache: dict[tuple[str, str, str], tuple[float, float]] = {}
 
 
-def _cache_get(from_currency: str, to_currency: str) -> Optional[float]:
-    key = (from_currency.upper(), to_currency.upper())
+def _cache_get(src: str, dst: str, source: str) -> Optional[float]:
+    key = (src.upper(), dst.upper(), source)
     entry = _cache.get(key)
     if entry is None:
         return None
@@ -41,43 +42,30 @@ def _cache_get(from_currency: str, to_currency: str) -> Optional[float]:
     return rate
 
 
-def _cache_put(from_currency: str, to_currency: str, rate: float) -> None:
-    key = (from_currency.upper(), to_currency.upper())
+def _cache_put(src: str, dst: str, source: str, rate: float) -> None:
+    key = (src.upper(), dst.upper(), source)
     _cache[key] = (rate, time.time())
 
 
-def _fetch_rate(from_currency: str, to_currency: str) -> float:
-    """Живой запрос к frankfurter.app.
+def _try_providers(src: str, dst: str) -> tuple[Optional[float], Optional[str], Optional[str]]:
+    """Пробует провайдеров по очереди. Возвращает (rate, source, error)."""
+    # 1. Тот же источник = frankfurter (ТЗ)
+    try:
+        rate = frankfurter_rate(src, dst)
+        return rate, "frankfurter", None
+    except Exception as exc:
+        frankfurter_err = f"{exc.__class__.__name__}: {exc}"
 
-    Использует URL из ТЗ: https://api.frankfurter.app/latest?from=USD&to=RUB
-    (httpx автоматически следует за 301-редиректом на api.frankfurter.dev/v1/...).
+    # 2. Fallback: ЦБ РФ для пар с RUB
+    if "RUB" in (src, dst):
+        try:
+            rate = cbr_rate(src, dst)
+            return rate, "cbr", None
+        except Exception as exc:
+            cbr_err = f"{exc.__class__.__name__}: {exc}"
+            return None, None, f"frankfurter: {frankfurter_err} | cbr: {cbr_err}"
 
-    Возвращает rate: amount_in_to = amount_in_from * rate.
-    Поднимает httpx.HTTPStatusError / httpx.RequestError при сбоях,
-    ValueError — если валюта не поддерживается frankfurter (например RUB).
-    """
-    url = f"{config.FRANKFURTER_BASE_URL}/latest"
-    params = {
-        "from": from_currency.upper(),
-        "to": to_currency.upper(),
-    }
-    with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-        resp = client.get(url, params=params)
-        resp.raise_for_status()
-        payload = resp.json()
-    rates = payload.get("rates") or {}
-    rate = rates.get(to_currency.upper())
-    if rate is None:
-        # Так frankfurter отвечает для неподдерживаемых валют (например RUB):
-        # GET /latest?from=USD&to=RUB -> 404 {"message":"not found"}
-        # Если же валюта просто отсутствует в rates — это тоже информативная ошибка.
-        raise ValueError(
-            f"frankfurter.app did not return rate for "
-            f"{from_currency}->{to_currency}. "
-            f"Likely currency is not supported (e.g. RUB was removed from "
-            f"ECB reference rates in 2022). Response: {payload}"
-        )
-    return float(rate)
+    return None, None, f"frankfurter: {frankfurter_err}"
 
 
 @tool
@@ -87,11 +75,11 @@ def convert_currency(
     to_currency: str,
     force_refresh: bool = False,
 ) -> dict[str, Any]:
-    """Конвертирует сумму из одной валюты в другую через frankfurter.app.
+    """Конвертирует сумму из одной валюты в другую.
 
-    Используется публичный API курсов Европейского центрального банка
-    (обновляется 1 раз в рабочий день). Результаты кешируются на TTL
-    из .env (по умолчанию 24 часа).
+    Основной источник курса — frankfurter.app (ECB reference rates).
+    Для конвертаций с участием RUB используется доп. источник — ЦБ РФ,
+    т.к. frankfurter.app не поддерживает RUB с 2022 года.
 
     Аргументы:
         amount:         сумма для конвертации (>= 0).
@@ -102,7 +90,8 @@ def convert_currency(
 
     Возвращает:
         Словарь:
-          {"ok": True, "amount": <float>, "from": ..., "to": ..., "rate": <float>}
+          {"ok": True, "amount": <float>, "from": ..., "to": ...,
+           "rate": <float>, "source": "frankfurter"|"cbr"}
         При ошибке:
           {"ok": False, "error": "<сообщение>"}
         Агент ДОЛЖЕН честно сообщить пользователю об ошибке, а не
@@ -122,29 +111,36 @@ def convert_currency(
             "from": src,
             "to": dst,
             "rate": 1.0,
-            "cached": False,
+            "source": "identity",
         }
 
-    rate: Optional[float] = None
-    if not force_refresh:
-        rate = _cache_get(src, dst)
-
-    if rate is None:
-        try:
-            rate = _fetch_rate(src, dst)
-        except (httpx.HTTPError, ValueError) as exc:
+    # Сначала кеш (для любого провайдера)
+    for source in ("frankfurter", "cbr"):
+        cached = _cache_get(src, dst, source)
+        if cached is not None and not force_refresh:
             return {
-                "ok": False,
-                "error": f"currency API error: {exc.__class__.__name__}: {exc}",
+                "ok": True,
+                "amount": round(float(amount) * cached, 2),
+                "from": src,
+                "to": dst,
+                "rate": cached,
+                "source": source,
             }
-        _cache_put(src, dst, rate)
 
-    converted = float(amount) * rate
+    rate, source, err = _try_providers(src, dst)
+    if rate is None:
+        return {
+            "ok": False,
+            "error": f"all currency providers failed: {err}",
+        }
+
+    assert source is not None
+    _cache_put(src, dst, source, rate)
     return {
         "ok": True,
-        "amount": round(converted, 2),
+        "amount": round(float(amount) * rate, 2),
         "from": src,
         "to": dst,
         "rate": rate,
-        "cached": force_refresh is False,
+        "source": source,
     }

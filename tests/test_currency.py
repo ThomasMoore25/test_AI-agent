@@ -1,23 +1,24 @@
 """Тесты инструмента convert_currency.
 
 Сверка с заданием: минимум 3 теста на оба инструмента в сумме.
-Здесь — 5 на convert_currency (включая мок API).
+Здесь — 8 на convert_currency (включая моки провайдеров).
 """
 
 from __future__ import annotations
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import httpx
 import pytest
 
 from app.tools.currency import convert_currency, _cache_put, _cache
-from app import config
+from app.tools import currency as currency_module
 
 
 def test_convert_currency_same_currency_no_api_call() -> None:
     """Конвертация USD->USD не дёргает API."""
-    with patch("app.tools.currency._fetch_rate") as mock_fetch:
+    with patch("app.tools.currency.frankfurter_rate") as mock_f, \
+         patch("app.tools.currency.cbr_rate") as mock_c:
         result = convert_currency.invoke(
             {
                 "amount": 100.0,
@@ -28,15 +29,18 @@ def test_convert_currency_same_currency_no_api_call() -> None:
     assert result["ok"] is True
     assert result["amount"] == 100.0
     assert result["rate"] == 1.0
-    mock_fetch.assert_not_called()
+    assert result["source"] == "identity"
+    mock_f.assert_not_called()
+    mock_c.assert_not_called()
 
 
 def test_convert_currency_uses_cache_and_skips_api() -> None:
     """Второй вызов в пределах TTL берёт кеш, не делает сетевой запрос."""
     _cache.clear()
-    _cache_put("USD", "RUB", 90.0)
+    _cache_put("USD", "RUB", "cbr", 90.0)
 
-    with patch("app.tools.currency._fetch_rate") as mock_fetch:
+    with patch("app.tools.currency.frankfurter_rate") as mock_f, \
+         patch("app.tools.currency.cbr_rate") as mock_c:
         result = convert_currency.invoke(
             {
                 "amount": 10.0,
@@ -47,36 +51,63 @@ def test_convert_currency_uses_cache_and_skips_api() -> None:
     assert result["ok"] is True
     assert result["amount"] == 900.0
     assert result["rate"] == 90.0
-    mock_fetch.assert_not_called()
+    assert result["source"] == "cbr"
+    mock_f.assert_not_called()
+    mock_c.assert_not_called()
 
 
 def test_convert_currency_force_refresh_ignores_cache() -> None:
     """force_refresh=True -> игнорируем кеш, делаем живой запрос."""
     _cache.clear()
-    _cache_put("USD", "RUB", 90.0)  # устаревший кеш
+    _cache_put("USD", "EUR", "frankfurter", 0.5)  # устаревший кеш
 
     with patch(
-        "app.tools.currency._fetch_rate", return_value=95.0
-    ) as mock_fetch:
+        "app.tools.currency.frankfurter_rate", return_value=0.9
+    ) as mock_f:
+        result = convert_currency.invoke(
+            {
+                "amount": 10.0,
+                "from_currency": "USD",
+                "to_currency": "EUR",
+                "force_refresh": True,
+            }
+        )
+    assert result["ok"] is True
+    assert result["rate"] == 0.9
+    assert result["amount"] == 9.0
+    assert result["source"] == "frankfurter"
+    mock_f.assert_called_once_with("USD", "EUR")
+
+
+def test_convert_currency_fallback_to_cbr_for_rub() -> None:
+    """Если frankfurter падает на RUB — fallback на ЦБ РФ."""
+    _cache.clear()
+    err = httpx.HTTPStatusError(
+        "404 Not Found",
+        request=httpx.Request("GET", "https://api.frankfurter.app/latest?from=USD&to=RUB"),
+        response=httpx.Response(404, json={"message": "not found"}),
+    )
+    with patch("app.tools.currency.frankfurter_rate", side_effect=err), \
+         patch("app.tools.currency.cbr_rate", return_value=90.0) as mock_c:
         result = convert_currency.invoke(
             {
                 "amount": 10.0,
                 "from_currency": "USD",
                 "to_currency": "RUB",
-                "force_refresh": True,
             }
         )
     assert result["ok"] is True
-    assert result["rate"] == 95.0
-    assert result["amount"] == 950.0
-    mock_fetch.assert_called_once_with("USD", "RUB")
+    assert result["amount"] == 900.0
+    assert result["source"] == "cbr"
+    mock_c.assert_called_once_with("USD", "RUB")
 
 
-def test_convert_currency_api_error_returns_structured_failure() -> None:
-    """При ошибке API возвращается ok=false, а не падает."""
+def test_convert_currency_all_providers_fail_returns_structured_failure() -> None:
+    """При ошибке обоих провайдеров возвращается ok=false (антигаллюцинация)."""
     _cache.clear()
     err = httpx.ConnectError("boom")
-    with patch("app.tools.currency._fetch_rate", side_effect=err):
+    with patch("app.tools.currency.frankfurter_rate", side_effect=err), \
+         patch("app.tools.currency.cbr_rate", side_effect=err):
         result = convert_currency.invoke(
             {
                 "amount": 10.0,
@@ -85,8 +116,9 @@ def test_convert_currency_api_error_returns_structured_failure() -> None:
             }
         )
     assert result["ok"] is False
-    assert "currency API error" in result["error"]
-    assert "ConnectError" in result["error"]
+    assert "all currency providers failed" in result["error"]
+    assert "frankfurter" in result["error"]
+    assert "cbr" in result["error"]
 
 
 def test_convert_currency_negative_amount_rejected() -> None:
@@ -103,26 +135,48 @@ def test_convert_currency_negative_amount_rejected() -> None:
 
 
 def test_convert_currency_unsupported_currency_returns_clear_error() -> None:
-    """RUB не поддерживается frankfurter.app (ECB убрал RUB в 2022).
+    """Неподдерживаемая всеми провайдерами валюта -> ok=false.
 
-    Агент должен получить структурированную ошибку и не выдумывать курс.
-    Используем мок, чтобы тест был детерминированным и не зависел от сети.
+    Пример: XYZ — нет ни в frankfurter, ни в ЦБ РФ.
     """
     _cache.clear()
-    # Имитируем ответ frankfurter для неподдерживаемой валюты
-    err = httpx.HTTPStatusError(
+    frankfurter_err = httpx.HTTPStatusError(
         "404 Not Found",
-        request=httpx.Request("GET", "https://api.frankfurter.app/latest?from=USD&to=RUB"),
+        request=httpx.Request("GET", "https://api.frankfurter.app/latest?from=XYZ&to=RUB"),
         response=httpx.Response(404, json={"message": "not found"}),
     )
-    with patch("app.tools.currency._fetch_rate", side_effect=err):
+    cbr_err = ValueError("CBR does not have rate for XYZ")
+    with patch("app.tools.currency.frankfurter_rate", side_effect=frankfurter_err), \
+         patch("app.tools.currency.cbr_rate", side_effect=cbr_err):
         result = convert_currency.invoke(
             {
                 "amount": 100.0,
-                "from_currency": "USD",
+                "from_currency": "XYZ",
                 "to_currency": "RUB",
             }
         )
     assert result["ok"] is False
-    assert "currency API error" in result["error"]
-    assert "404" in result["error"]
+    assert "all currency providers failed" in result["error"]
+
+
+def test_convert_currency_rub_to_usd_via_cbr() -> None:
+    """RUB->USD: frankfurter не поддерживает RUB, идём в CBR."""
+    _cache.clear()
+    err = httpx.HTTPStatusError(
+        "404 Not Found",
+        request=httpx.Request("GET", "https://api.frankfurter.app/latest?from=RUB&to=USD"),
+        response=httpx.Response(404, json={"message": "not found"}),
+    )
+    with patch("app.tools.currency.frankfurter_rate", side_effect=err), \
+         patch("app.tools.currency.cbr_rate", return_value=0.0125) as mock_c:
+        result = convert_currency.invoke(
+            {
+                "amount": 1000.0,
+                "from_currency": "RUB",
+                "to_currency": "USD",
+            }
+        )
+    assert result["ok"] is True
+    assert result["amount"] == 12.5
+    assert result["source"] == "cbr"
+    mock_c.assert_called_once_with("RUB", "USD")
