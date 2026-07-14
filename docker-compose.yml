@@ -1,0 +1,9 @@
+services:
+  agent:
+    build: .
+    container_name: subscription_agent
+    env_file:
+      - .env
+    stdin_open: true   # REPL требует интерактивного stdin
+    tty: true
+    restart: "no"

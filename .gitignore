@@ -1,0 +1,30 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Виртуальные окружения ---
+.venv/
+venv/
+env/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Секреты (СВЕРКА С ТЗ: API-ключ передаётся через .env) ---
+.env
+.env.local
+.env.*.local
+
+# --- Docker ---
+*.log
+
+# --- OS ---
+.DS_Store
+Thumbs.db

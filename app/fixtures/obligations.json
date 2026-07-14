@@ -1,0 +1,112 @@
+{
+  "obligations": [
+    {
+      "id": "11111111-aaaa-aaaa-aaaa-111111111111",
+      "title": "Netflix",
+      "amount": 9.99,
+      "currency": "USD",
+      "category": "subscription",
+      "next_payment_date": "2026-07-20",
+      "status": "active"
+    },
+    {
+      "id": "22222222-bbbb-bbbb-bbbb-222222222222",
+      "title": "Spotify Premium",
+      "amount": 5.99,
+      "currency": "USD",
+      "category": "subscription",
+      "next_payment_date": "2026-07-18",
+      "status": "active"
+    },
+    {
+      "id": "33333333-cccc-cccc-cccc-333333333333",
+      "title": "Яндекс.Плюс",
+      "amount": 299.0,
+      "currency": "RUB",
+      "category": "subscription",
+      "next_payment_date": "2026-07-17",
+      "status": "active"
+    },
+    {
+      "id": "44444444-dddd-dddd-dddd-444444444444",
+      "title": "Apple iCloud+ 200GB",
+      "amount": 2.99,
+      "currency": "USD",
+      "category": "subscription",
+      "next_payment_date": "2026-07-22",
+      "status": "active"
+    },
+    {
+      "id": "55555555-eeee-eeee-eeee-555555555555",
+      "title": "GitHub Pro",
+      "amount": 4.0,
+      "currency": "USD",
+      "category": "software",
+      "next_payment_date": "2026-08-01",
+      "status": "active"
+    },
+    {
+      "id": "66666666-ffff-ffff-ffff-666666666666",
+      "title": "JetBrains All Products Pack",
+      "amount": 24.9,
+      "currency": "EUR",
+      "category": "software",
+      "next_payment_date": "2026-07-25",
+      "status": "active"
+    },
+    {
+      "id": "77777777-1111-1111-1111-777777777777",
+      "title": "Электроэнергия Мосэнерго",
+      "amount": 1500.0,
+      "currency": "RUB",
+      "category": "utility",
+      "next_payment_date": "2026-07-19",
+      "status": "active"
+    },
+    {
+      "id": "88888888-2222-2222-2222-888888888888",
+      "title": "Интернет Ростелеком",
+      "amount": 800.0,
+      "currency": "RUB",
+      "category": "utility",
+      "next_payment_date": "2026-07-16",
+      "status": "active"
+    },
+    {
+      "id": "99999999-3333-3333-3333-999999999999",
+      "title": "Patreon support to creator",
+      "amount": 5.0,
+      "currency": "EUR",
+      "category": "donation",
+      "next_payment_date": "2026-07-28",
+      "status": "active"
+    },
+    {
+      "id": "aaaaaaaa-4444-4444-4444-aaaaaaaaaaaa",
+      "title": "Amazon Prime",
+      "amount": 8.99,
+      "currency": "USD",
+      "category": "subscription",
+      "next_payment_date": "2026-08-05",
+      "status": "paused"
+    },
+    {
+      "id": "bbbbbbbb-5555-5555-5555-bbbbbbbbbbbb",
+      "title": "Gym membership World Class",
+      "amount": 4500.0,
+      "currency": "RUB",
+      "category": "membership",
+      "next_payment_date": "2026-07-21",
+      "status": "active"
+    },
+    {
+      "id": "cccccccc-6666-6666-6666-cccccccccccc",
+      "title": "The Guardian digital",
+      "amount": 5.99,
+      "currency": "GBP",
+      "category": "subscription",
+      "next_payment_date": "2026-07-23",
+      "status": "active"
+    }
+  ]
+}
