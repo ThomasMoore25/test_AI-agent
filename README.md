@@ -192,19 +192,19 @@ frankfurter.app на 2026-07-14):
 | Требование ТЗ | Реализация |
 |---|---|
 | Python, LLM на выбор | Python 3.11, GigaChat (Сбер) |
-| Срок 3 дня | v0.1 готов к ревью |
-| Формат: ссылка на репозиторий | GitHub-репозиторий |
-| ReAct-агент через готовый фреймворк | LangChain + LangGraph `create_react_agent` |
+| Срок 3 дня | v1.0 готов к ревью |
+| Формат: ссылка на репозиторий | https://github.com/ThomasMoore25/test_AI-agent |
+| ReAct-агент через готовый фреймворк | LangChain 1.3 + LangGraph 1.2 `create_react_agent` |
 | `get_obligations(status, category)` из JSON | `app/tools/obligations.py`, фикстура 12 записей |
 | Схема записи (7 полей) | `Obligation` Pydantic-модель |
 | 10–15 записей в разных валютах/категориях | 12 записей: USD/EUR/RUB/GBP × subscription/utility/software/membership/donation |
-| `convert_currency(amount, from, to)` через frankfurter.app | `app/tools/currency.py` |
+| `convert_currency(amount, from, to)` через frankfurter.app | `app/tools/currency.py` + fallback на ЦБ РФ для RUB |
 | Антигаллюцинация при ошибке API | Возврат `{"ok": false, "error": ...}`, агент честно сообщает |
-| Логирование Thought/Action/Observation | `app/logging_callback.py`, вывод в консоль |
-| Контейнеризация: Dockerfile + docker-compose | `Dockerfile`, `docker-compose.yml`, `docker compose up` |
+| Логирование Thought/Action/Observation | `app/logging_callback.py`, вывод в консоль + опц. JSONL-файл |
+| Контейнеризация: Dockerfile + docker-compose | `Dockerfile` с smoke-test, `docker-compose.yml` с volume для логов |
 | LLM_API_KEY через `.env` | `.env.example`, `.gitignore` блокирует `.env` |
-| Минимум 3 unit-теста | 13 тестов (8 + 5) |
-| README: 4 раздела | Разделы 1–4 выше |
+| Минимум 3 unit-теста | **21 тест** (8 currency + 5 obligations + 8 integration/date) |
+| README: 4 раздела | Разделы 1–4 выше + 4 примера трейсов в `examples/` |
 
 ---
 
@@ -216,24 +216,38 @@ test_AI-agent/
 │   ├── __init__.py
 │   ├── agent.py                  # сборка ReAct-агента
 │   ├── config.py                 # настройки из .env
-│   ├── logging_callback.py       # Thought/Action/Observation -> консоль
+│   ├── date_utils.py             # фильтр по датам, группировка
+│   ├── logging_callback.py       # Thought/Action/Observation -> консоль + JSONL
+│   ├── providers/
+│   │   ├── __init__.py
+│   │   ├── frankfurter.py        # основной источник курсов (ТЗ)
+│   │   └── cbr.py                # fallback для RUB (ЦБ РФ)
 │   ├── tools/
 │   │   ├── __init__.py
 │   │   ├── obligations.py        # get_obligations
-│   │   └── currency.py           # convert_currency
+│   │   └── currency.py           # convert_currency с fallback
 │   └── fixtures/
 │       └── obligations.json      # 12 записей, разные валюты/категории
 ├── tests/
 │   ├── __init__.py
 │   ├── test_obligations.py       # 5 тестов
-│   └── test_currency.py          # 8 тестов
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── requirements-dev.txt
+│   ├── test_currency.py          # 8 тестов
+│   └── test_integration.py       # 8 тестов (даты, mock-LLM, smoke)
+├── examples/
+│   ├── README.md
+│   ├── query_30_days_rub.md      # User Story #1
+│   ├── query_top_category.md     # User Story #2
+│   ├── query_this_week.md        # User Story #3
+│   └── query_error_handling.md   # антигаллюцинация
 ├── .env.example
 ├── .gitignore
-├── main.py                       # CLI REPL
+├── Dockerfile                    # + smoke-test при сборке
+├── docker-compose.yml            # + volume для логов
+├── Makefile                      # команды разработки
+├── pyproject.toml                # ruff + mypy + pytest конфиг
+├── requirements.txt              # зафиксированные версии
+├── requirements-dev.txt          # + pytest, ruff, mypy, pytest-cov
+├── main.py                       # CLI REPL + one-shot режим
 └── README.md
 ```
 
