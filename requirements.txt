@@ -1,5 +1,5 @@
 # Зависимости зафиксированы по точным версиям (воспроизводимость Docker-сборки).
-langchain==1.3.13
+langchain==1.3.14
 langchain-core==1.4.9
 langchain-gigachat==0.5.1
 langgraph==1.2.9
